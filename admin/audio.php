@@ -1,0 +1,193 @@
+<?php 
+  session_start();
+  include '../config/config.php';
+  class data extends Connection{ 
+    public function managedata(){ 
+?>
+<!DOCTYPE html>
+<html>
+<head><?php include 'head.php'; ?></head>
+<body class="hold-transition skin-blue sidebar-mini">
+  <div class="wrapper">
+    <?php include 'profile.php'; ?>
+    <?php include 'sidebar.php'; ?>
+    <div class="content-wrapper" style="height: 100vh;background-color: #f9f9f9;overflow-y: auto;">
+      <section class="content">
+        <div class="row">
+          <div class="col-xs-12">
+            <div class="box">
+                <?php if($_SESSION['type'] == 2): ?>
+                    <div class="box-header with-border">
+                        <a href="#addnew" data-toggle="modal" class="btn btn-success btn-sm btn-flat custom-btn"><i class="fa fa-plus"></i> New Audio</a> 
+                    </div>
+                    <div class="box-body table-responsive">
+                        <table id="example1" class="table table-bordered">
+                            <thead>
+                                <th>List</th>
+                                <th>Category</th>
+                                <th>Title</th>
+                                <th>Audio</th>
+                                <th>Action</th>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $sql = "SELECT * FROM audio";
+                                $stmt = $this->conn()->query($sql);
+                                $id = 1;
+                                while ($row = $stmt->fetch()) { 
+                                    $file = $row['file'];
+                                    $file_ext = pathinfo($file, PATHINFO_EXTENSION);
+                                    $file_path = "../audiovideo/" . $file;
+                                ?>
+                                    <tr>
+                                        <td><?php echo $id; ?></td>
+                                        <td><?php echo $row['category']; ?></td>
+                                        <td><?php echo $row['title']; ?></td>
+                                        <td>
+                                            <?php if (in_array($file_ext, ['mp3', 'wav', 'ogg'])) { ?>
+                                                <audio controls>
+                                                    <source src="<?php echo $file_path; ?>" type="audio/<?php echo $file_ext; ?>">
+                                                    Your browser does not support the audio element.
+                                                </audio>
+                                            <?php } else { ?>
+                                                <?php echo $file; ?>
+                                            <?php } ?>
+                                        </td>
+                                        <td>
+                                            <button class='btn btn-success btn-sm edit btn-flat' 
+                                                data-edit_id='<?php echo $row['id']; ?>'
+                                                data-edit_file='<?php echo $row['file']; ?>'
+                                                data-edit_title='<?php echo $row['title']; ?>'
+                                                data-edit_category='<?php echo $row['category']; ?>'>
+                                                <i class='fa fa-edit'></i> Edit
+                                            </button>
+                                            <button class='btn btn-danger btn-sm delete btn-flat' 
+                                                data-delete_id='<?php echo $row['id']; ?>'>
+                                                <i class='fa fa-trash'></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php $id++; } ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+
+                <?php if($_SESSION['type'] == 0): ?>
+                    <div class="box-header with-border">
+                        <a href="bookmark_audio.php" class="btn btn-success btn-sm btn-flat custom-btn"><i class="fas fa-bookmark"></i> Bookmark</a> 
+                    </div>
+                    <div class="box-body">
+                        <?php
+                        // Get user's score and category
+                        $sql = "SELECT * FROM scores WHERE users_id = ? ORDER BY id DESC LIMIT 1";
+                        $stmt = $this->conn()->prepare($sql);
+                        $stmt->execute([$_SESSION['id']]);
+                        
+                        $category = 'Normal'; // Default category
+                        if($stmt->rowCount() > 0) {
+                            $score = $stmt->fetch()['score'];
+                            if($score >= 70) {
+                                $category = 'Depressed';
+                            } else if($score >= 50) {
+                                $category = 'Anxiety';
+                            }
+                        }
+                        
+                        // Get audio for user's category
+                        $sql = "SELECT * FROM audio WHERE category = ?";
+                        $stmt = $this->conn()->prepare($sql);
+                        $stmt->execute([$category]);
+                        ?>
+                        
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <h3>Recommended Audio for You</h3>
+                                <p>Showing content tailored to your assessment results</p>
+                            </div>
+                            <?php while ($row = $stmt->fetch()) { 
+                                $file = $row['file'];
+                                $file_ext = pathinfo($file, PATHINFO_EXTENSION);
+                                $file_path = "../audiovideo/" . $file;
+                            ?>
+                                <div class="col-lg-3" style="text-align: center;">
+                                    <div class="card" style="border: 2px solid rgba(0, 0, 0, 0.1);padding: 20px;">
+                                        <?php if (in_array($file_ext, ['mp3', 'wav', 'ogg'])) { ?>
+                                            <audio controls>
+                                                <source src="<?php echo $file_path; ?>" type="audio/<?php echo $file_ext; ?>">
+                                                Your browser does not support the audio element.
+                                            </audio>
+                                        <?php } else { ?>
+                                            <?php echo $file; ?>
+                                        <?php } ?>
+                                        <div style="display: flex;place-items: center;justify-content: space-between;">
+                                            <h4 style="text-align: center;"><?php echo $row['title']; ?></h4>
+                                            <h4>
+                                                <?php 
+                                                $sql2 = "SELECT * FROM bookmark_audio WHERE users_id = ? AND audio_id = ?";
+                                                $stmt2 = $this->conn()->prepare($sql2);
+                                                $stmt2->execute([$_SESSION['id'],$row['id']]);
+                                                if ($stmt2->rowCount() > 0) { ?>
+                                                    <i class="fas fa-bookmark bookmark" data-id="<?php echo $row['id'] ?>"></i>
+                                                <?php } else { ?>
+                                                    <i class="far fa-bookmark bookmark" data-id="<?php echo $row['id'] ?>"></i>
+                                                <?php } ?>
+                                            </h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php } ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <?php include 'footer.php'; ?>
+  <?php include 'modal/audioModal.php'; ?>
+  <script>
+    $(document).on('click', '.edit', function(e){
+      e.preventDefault();
+      $('#edit').modal('show');
+      var edit_id = $(this).data('edit_id');
+      var edit_file = $(this).data('edit_file');
+      var edit_title = $(this).data('edit_title'); 
+      var edit_category = $(this).data('edit_category');
+
+      $('#edit_id').val(edit_id);
+      $('#edit_file').val(edit_file);
+      $('#edit_title').val(edit_title);
+      $('#edit_category').val(edit_category);
+    });
+
+    $(document).on('click', '.delete', function(e){
+      e.preventDefault();
+      $('#delete').modal('show');
+      var delete_id = $(this).data('delete_id');
+      $('#delete_id').val(delete_id);
+    });
+
+    $(document).ready(function() {
+        $(".bookmark").click(function() {
+            $(this).toggleClass("far fas");
+            let audioId = $(this).data("id");
+            $.ajax({
+                url: '../controller/audioController.php',
+                type: 'POST',
+                data: { setbookmark: 'setbookmark', id: audioId },
+                success: function(response) {
+                    console.log("Bookmark status updated:", response);
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error:", error);
+                }
+            });
+        });
+    });
+  </script>
+</body>
+</html>
+<?php } } $data = new data(); $data->managedata(); ?>
